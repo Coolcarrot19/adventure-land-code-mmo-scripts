@@ -1,8 +1,12 @@
+let solo_mode = false;
 
-let attack_mode=true
+let attack_mode = true;
 
 // summon other characters and invite to party
 function summonfriends() {
+	if(solo_mode) {
+		return;
+	}
 	let sufen = get_player("Fenikkel");
 	let sual = get_player("Alruner");
 	
@@ -19,17 +23,17 @@ function summonfriends() {
 	}
 }
 
-// potion and regeneration
+// potion and regeneration since they share cooldown
 function drink_potion() {
 	// if 33% hp, use a health potion
 	if (character.hp < character.max_hp / 3 && can_use("use_hp")) {
-		set_message("Drink H-Potion");
+		set_message("Drink Potion");
 		use_skill('use_hp');
 		return;
 	}
 	// if 50% mana, use mana potion
 	if (character.mp < character.max_mp / 2 && can_use("use_mp")) {
-		set_message("Drink M-Potion");
+		set_message("Drink Potion");
 		use_skill('use_mp');
 		return;
 	}
@@ -92,38 +96,61 @@ function taunting() {
             	);
         	}
 		if(can_use("taunt")) {
-			set_message(`Taunt ${monster}`); 
+			set_message(`Taunt ${monster.name}`); 
         	use_skill("taunt", monster);
 		}	// taunt monster before it reaches party member
     	}
 	}
 }
 
-// seek and attack nearest enemy with standard attack
-function sandd() {
-	var target=get_targeted_monster();
-	if(!target)
-	{
-		target=get_nearest_monster({min_xp:100,max_att:200,max_distance:20,no_target: true,path_check:true});
-		if(target) change_target(target);
-		else
-		{
-			set_message("No Monsters");
-			return;
+// seek nearest new target / prioritize phoenix
+function seekmonster() {
+	let target=get_targeted_monster();
+	if(target && target.rip) {
+		target = null
+	}
+	if(!target || target.mtype !== "phoenix") {
+		let is_pho = get_nearest_monster({
+		type: "phoenix",
+		})
+		if(is_pho) {
+			set_message(`Found: ${is_pho.name}`);
+			change_target(is_pho);
+			return is_pho;
+		}
+	} 
+	if(target && !target.rip) {
+	   return target;
+	}
+	if(!target) {
+		target = get_nearest_monster({
+		min_xp:100,
+		max_att:200,
+		max_distance:20,
+		path_check:true
+		})
+		if(target) {
+			set_message(`Found: ${target.name}`)
+			change_target(target);
+			return target;
 		}
 	}
-	
-	if(!is_in_range(target))
-	{
+	return target;
+}
+
+// attack current target
+function standard_attack() {
+	let target = seekmonster();
+	if(!target) return;
+	if(!is_in_range(target)) {
 		move(
 			character.x+(target.x-character.x)/2,
 			character.y+(target.y-character.y)/2
 			);
 		// Walk half the distance
 	}
-	else if(can_attack(target))
-	{
-		set_message("Attacking");
+	else if(can_attack(target)) {
+		set_message(`Atk ${target.name}`);
 		attack(target);
 	}
 	if (target && target.rip) {
@@ -132,6 +159,18 @@ function sandd() {
 	}
 }
 
+// charge enemy
+function chargesk() {
+	let target = character.target;
+	if(!target) {
+		return;
+	}
+	if(can_use("charge") && !is_in_range(target)) {
+		set_message(`Charge ${target.name}!`);
+		use_skill("charge");
+		return;
+	}
+}
 
 // Main Loop
 setInterval(function(){
@@ -144,11 +183,17 @@ setInterval(function(){
 	
 	loot();
 
-	if(!attack_mode || character.rip || character.party == null) return;
-
+	if(!attack_mode || character.rip) return;
+	
+	
 	// battle and tank loops
 	
-	sandd();
+	seekmonster();
+	
+	//charge to enemy
+	chargesk();
+	
+	standard_attack();
 
 },1000/4); // Loops every 1/4 seconds.
 
