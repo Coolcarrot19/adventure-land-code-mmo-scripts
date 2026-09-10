@@ -10,20 +10,19 @@ function summonfriends() {
 	let sufen = get_player("Fenikkel");
 	let sual = get_player("Alruner");
 	
-	if(character.party && character.party !== character.name) return;
-
+	if(character.party && character.party !== character.name) {
+		return;
+	}
 	if (sufen == null || sual == null) { 
 		start_character("Fenikkel", "Fenikkel");
 		start_character("Alruner", "Alruner");
-	} else {
-		if (!sufen.party || !sual.party) {
-			send_party_invite("Fenikkel");
-			send_party_invite("Alruner");
-		}
+	} else if(!sufen.party || !sual.party) {
+		send_party_invite("Fenikkel");
+		send_party_invite("Alruner");
 	}
 }
 
-// potion and regeneration since they share cooldown
+// potion and regeneration
 function drink_potion() {
 	// if 33% hp, use a health potion
 	if (character.hp < character.max_hp / 3 && can_use("use_hp")) {
@@ -95,11 +94,11 @@ function taunting() {
                 	character.y + (monster.y - character.y) / 2
             	);
         	}
+		}
 		if(can_use("taunt")) {
 			set_message(`Taunt ${monster.name}`); 
         	use_skill("taunt", monster);
 		}	// taunt monster before it reaches party member
-    	}
 	}
 }
 
@@ -108,15 +107,15 @@ function seekmonster() {
 	let target=get_targeted_monster();
 	if(target && target.rip) {
 		target = null
-	}
-	if(!target || target.mtype !== "phoenix") {
-		let is_pho = get_nearest_monster({
+	} //if no target or target is not type "phoenix"
+	if(!target || target.mtype !== "phoenix") { 
+		let is_pho = get_nearest_monster({ // search for phoenix nearby
 		type: "phoenix",
 		})
 		if(is_pho) {
-			set_message(`Found: ${is_pho.name}`);
-			change_target(is_pho);
-			return is_pho;
+			set_message(`Found: ${is_pho.name}`); 
+			change_target(is_pho); //if found, target it immediently
+			return is_pho; // return phoenix to overwrite old target 
 		}
 	} 
 	if(target && !target.rip) {
@@ -172,6 +171,31 @@ function chargesk() {
 	}
 }
 
+// buff team with war cry
+function war_cry() {
+	if(character.level < 70) {
+		return;
+	}
+	if(can_use("warcry") && character.mp > 280) {
+		set_message("WAR CRY!!!!");
+		use_skill("warcry");
+		return;
+	}
+}
+
+// shields when low hp!
+function panicshield() {
+	if(character.level < 60) {
+		return;
+	}
+	if(character.hp < character.max_hp / 4 && character.mp > 480 && can_use("hardshell")) {
+		set_message("Low HP, Shielding!");
+		use_skill("hardshell");
+		return;
+	}
+}
+
+
 // Main Loop
 setInterval(function(){
 	
@@ -192,6 +216,10 @@ setInterval(function(){
 	
 	//charge to enemy
 	chargesk();
+	
+	war_cry();
+	
+	panicshield();
 	
 	standard_attack();
 
